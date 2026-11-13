@@ -447,7 +447,21 @@ export function openCamera(kind) {
     };
 
     const showResidue = (src, sx, sy, side) => {
-      const res = analyzeResidue(src, sx, sy, side);
+      // If the inner bottom isn't found in this crop, try a slightly tighter and a slightly looser crop
+      // around the same centre. The floor search can miss at one framing and succeed at another, so a retry
+      // only counts when both other crops find the floor (one lucky match on a non-cup photo is not enough).
+      const W = src.videoWidth || src.naturalWidth || src.width, H = src.videoHeight || src.naturalHeight || src.height;
+      const cx = sx + side / 2, cy = sy + side / 2;
+      const at = (f) => {
+        const s = Math.min(side * f, W, H);
+        const x = Math.min(Math.max(0, cx - s / 2), W - s), y = Math.min(Math.max(0, cy - s / 2), H - s);
+        return analyzeResidue(src, x, y, s);
+      };
+      let res = at(1);
+      if (!res.floor) {
+        const tight = at(0.89), loose = at(1.11);
+        if (tight.floor && loose.floor) res = tight;
+      }
       const retake = () => { el.querySelector('.cam-result')?.remove(); live(); };
       if (!res.floor) {
         // Without the inner bottom there is nothing reliable to judge: ask for another photo instead of guessing.

@@ -8,7 +8,7 @@ This repository contains the web prototype: a live 3D model of the device that w
 
 > Concept and demo only. Not a validated medical device.
 
-Live demo: _link coming soon_
+**Live demo: [medsafe-peg-website.vercel.app](https://medsafe-peg-website.vercel.app)**
 
 ---
 

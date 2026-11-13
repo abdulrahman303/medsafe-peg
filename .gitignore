@@ -1,0 +1,7 @@
+.DS_Store
+# Local working files: never published
+*.pptx
+*.potx
+~$*
+*.zip
+claude-design-update/

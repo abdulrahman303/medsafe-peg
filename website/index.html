@@ -1,0 +1,560 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MedSafe PEG · Interactive walkthrough</title>
+<meta name="description" content="Interactive walkthrough of MedSafe PEG, a concept home device that prepares tablet medication for a PEG feeding tube.">
+<meta name="theme-color" content="#EFEEEA">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23141414'/%3E%3Ccircle cx='16' cy='16' r='6' fill='%23FF5B2E'/%3E%3C/svg%3E">
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.184.0/build/three.module.js",
+    "three/addons/controls/OrbitControls.js": "https://unpkg.com/three@0.184.0/examples/jsm/controls/OrbitControls.js"
+  },
+  "integrity": {
+    "https://unpkg.com/three@0.184.0/build/three.module.js": "sha384-8FCZ1eVO6it4+pbec2aDtnTrwjWXZLJRC+MAGCIPDgsYnUrl/E0A2YlF8ioMKI/J",
+    "https://unpkg.com/three@0.184.0/build/three.core.js": "sha384-dw2ooPewaEIrAgl6oFDBmmBWCE9oW9LxRGcfwZ0hLvEprzo202wXl7vCYHRlSnOT",
+    "https://unpkg.com/three@0.184.0/examples/jsm/controls/OrbitControls.js": "sha384-4rziNxOBZKQ69i+w+f89KJ55TCYquwchVbByQwmaOeIOXdOU2PLDn3kOfXHwIJC9"
+  }
+}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; height: 100%; background: #EFEEEA; color: #141414; font-family: 'Geist', 'Helvetica Neue', Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; overflow: hidden; }
+  a { color: #141414; text-decoration: none; }
+  a:hover { color: #FF5B2E; }
+  * { box-sizing: border-box; }
+  three-d-stage:not(:defined) { visibility: hidden; }
+  three-d-stage { position: fixed; left: 0; right: 0; top: 0; height: 100%; }
+  .ui { position: fixed; inset: 0; pointer-events: none; }
+  .ui > * { pointer-events: auto; }
+  .top { position: absolute; left: 32px; right: 32px; top: 28px; display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; pointer-events: none; }
+  .top > * { pointer-events: auto; }
+  .brand h1 { margin: 8px 0 0; font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
+  .brand p { margin: 6px 0 0; font-size: 14px; color: #63625E; max-width: 340px; line-height: 1.45; text-wrap: pretty; }
+  .mono { font-family: 'Geist Mono', ui-monospace, Menlo, monospace; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: #63625E; }
+  .ctrl { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+  .seg { display: flex; gap: 2px; padding: 3px; background: rgba(20,20,20,0.06); border-radius: 999px; }
+  .seg button { appearance: none; border: 0; background: transparent; font: 500 13px/1 'Geist', sans-serif; color: #3F3E3B; padding: 10px 14px; border-radius: 999px; cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: #141414; color: #fff; }
+  .labels { position: absolute; inset: 0; pointer-events: none; }
+  .lab { position: absolute; left: 0; top: 0; display: flex; align-items: center; gap: 8px; white-space: nowrap; transition: opacity .35s; will-change: transform; }
+  .lab i { width: 6px; height: 6px; border-radius: 50%; background: #141414; flex: none; }
+  .lab b { width: 28px; height: 1px; background: rgba(20,20,20,0.35); flex: none; }
+  .lab > span { font: 500 12.5px/1.2 'Geist', sans-serif; background: rgba(239,238,234,0.85); padding: 3px 6px; border-radius: 4px; }
+  .lab.l { flex-direction: row-reverse; }
+  .lab em { font-style: normal; font-family: 'Geist Mono', monospace; font-size: 10.5px; color: #8A8984; margin-right: 6px; }
+  .foot { position: absolute; left: 32px; bottom: 56px; pointer-events: none; }
+  .legend { display: none; position: absolute; left: 18px; right: 18px; bottom: calc(78px + env(safe-area-inset-bottom)); margin: 0; padding: 0; list-style: none; grid-template-columns: 1fr 1fr; gap: 6px 14px; font: 500 12px/1.3 'Geist', sans-serif; color: #141414; pointer-events: none; transition: opacity .35s; }
+  .legend em { font-style: normal; font-family: 'Geist Mono', monospace; font-size: 10.5px; color: #8A8984; margin-right: 6px; }
+  body.wt .foot { bottom: 84px; }
+  body:not(.wt) #panel, body:not(.wt) #bar { display: none; }
+  body.wt #exploreCtl { display: none; }
+
+  /* Walkthrough panel */
+  #panel { position: absolute; right: 24px; top: 96px; width: 372px; max-height: calc(100% - 120px); overflow: auto; background: rgba(255,255,255,0.86); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 14px; box-shadow: 0 1px 0 rgba(20,20,20,0.04), 0 12px 40px rgba(20,20,20,0.08); }
+  .ph { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .link { appearance: none; border: 0; background: none; padding: 6px 0; font: 500 13px/1 'Geist', sans-serif; color: #63625E; cursor: pointer; }
+  .link:hover { color: #FF5B2E; }
+  #panel h2 { margin: 0; font-size: 26px; font-weight: 600; letter-spacing: -0.015em; line-height: 1.1; }
+  #panel p { margin: 0; font-size: 15px; line-height: 1.5; color: #3F3E3B; text-wrap: pretty; }
+  #panel p.small { font-size: 13px; color: #63625E; }
+  .acts { display: flex; flex-direction: column; gap: 8px; }
+  .btn { appearance: none; display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 48px; padding: 0 20px; border-radius: 999px; border: 1px solid #141414; background: #141414; color: #fff; font: 500 15px/1 'Geist', sans-serif; cursor: pointer; }
+  .btn:hover { background: #2A2A2A; }
+  .btn.ghost { background: transparent; color: #141414; border-color: rgba(20,20,20,0.22); }
+  .btn.ghost:hover { border-color: #141414; }
+  .btn.sm { min-height: 40px; padding: 0 16px; font-size: 14px; }
+  .prog { height: 3px; border-radius: 2px; background: rgba(20,20,20,0.1); overflow: hidden; }
+  .prog i { display: block; height: 100%; width: 0; background: #FF5B2E; }
+  .card { border-radius: 12px; background: #F6F5F2; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+  .card dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; font-size: 14px; }
+  .card dt { color: #63625E; }
+  .card dd { margin: 0; font-weight: 500; }
+  .pname { font-size: 17px; font-weight: 600; }
+  .rc { border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px; background: #F6F5F2; border: 1px solid transparent; }
+  .rc.ok { background: #EAF4EE; border-color: #CFE6D8; }
+  .rc.bad { background: #FCECE6; border-color: #F6CDBF; }
+  .rc-h { display: flex; align-items: center; gap: 8px; font: 600 13px/1 'Geist Mono', monospace; letter-spacing: 0.06em; text-transform: uppercase; }
+  .rc-h i { width: 8px; height: 8px; border-radius: 50%; }
+  .rc.ok .rc-h { color: #17663F; } .rc.ok .rc-h i { background: #1F8A53; }
+  .rc.bad .rc-h { color: #B3361A; } .rc.bad .rc-h i { background: #FF5B2E; }
+  .rc-t { font-size: 20px; font-weight: 600; letter-spacing: -0.01em; }
+  .rc-s { font-size: 14px; color: #63625E; margin-top: -6px; }
+  .checks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+  .checks li { display: grid; grid-template-columns: 20px 1fr; gap: 2px 6px; }
+  .checks li::before { grid-row: span 2; font-weight: 600; }
+  .checks li.y::before { content: '✓'; color: #1F8A53; }
+  .checks li.n::before { content: '✕'; color: #D2401F; }
+  .checks li.u::before { content: '–'; color: #8A8984; }
+  .checks b { font-weight: 600; }
+  .checks span { color: #3F3E3B; }
+  .rc-next { font-size: 15px; font-weight: 500; line-height: 1.4; color: #141414; padding-top: 10px; border-top: 1px solid rgba(179,54,26,0.16); }
+  .route { font-size: 14px; color: #63625E; margin-top: -6px; }
+  .rx { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+  .rx li { display: grid; grid-template-columns: 78px 1fr; gap: 12px; align-items: baseline; padding: 10px 0; border-top: 1px solid rgba(20,20,20,0.08); }
+  .rx-t b { display: block; font-size: 17px; font-weight: 600; letter-spacing: -0.01em; }
+  .rx-t em { font-style: normal; font-family: 'Geist Mono', monospace; font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: #8A8984; }
+  .rx li.now .rx-t em { color: #D2401F; }
+  .rx-m { font-size: 14px; color: #63625E; line-height: 1.4; }
+  .rx-m b { display: block; font-size: 15px; font-weight: 600; color: #141414; }
+  .src { display: inline-flex; align-self: flex-start; padding: 5px 8px; border-radius: 6px; background: rgba(20,20,20,0.06); }
+  .rc img { width: 120px; height: 120px; border-radius: 50%; align-self: flex-start; }
+  .sum dl { grid-template-columns: 96px 1fr; }
+  /* Keep the primary action visible when the panel content has to scroll. */
+  #panel .acts { position: sticky; bottom: -20px; margin-bottom: -20px; padding: 6px 0 20px; background: linear-gradient(rgba(255,255,255,0), #fff 6px); }
+  #panel .link { padding: 12px 0; margin: -6px 0; }
+
+  /* Step bar */
+  #bar { position: absolute; left: 32px; right: 420px; bottom: 24px; display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+  #bar button { appearance: none; border: 0; flex: 1 0 auto; display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 10px; background: rgba(20,20,20,0.05); font: 500 13px/1 'Geist', sans-serif; color: #63625E; cursor: pointer; white-space: nowrap; }
+  #bar button .mono { font-size: 10.5px; color: inherit; }
+  #bar button.done { color: #141414; }
+  #bar button.cur { background: #141414; color: #fff; }
+  #bar button.camstep::after { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #FF5B2E; }
+
+  /* Camera overlay */
+  .cam { position: fixed; inset: 0; z-index: 50; background: #0C0D0E; color: #fff; }
+  .cam video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .cam.nocam video, .cam.nocam .cam-shade { display: none; }
+  .cam .mono { color: rgba(255,255,255,0.6); }
+  .cam-shade { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; padding-bottom: 60px; }
+  .cam-guide { border: 2px solid #fff; border-radius: 14px; box-shadow: 0 0 0 200vmax rgba(12,13,14,0.55); position: relative; overflow: hidden; }
+  .cam-guide.rect { width: min(78vw, 380px); aspect-ratio: 1.45; }
+  .cam-guide.rect::after { content: ''; position: absolute; left: 6%; right: 6%; height: 2px; background: #FF5B2E; box-shadow: 0 0 12px #FF5B2E; animation: sweep 1.8s ease-in-out infinite alternate; }
+  .cam-guide.circle { width: min(78vw, 56vh, 440px); aspect-ratio: 1; border-radius: 50%; }
+  @keyframes sweep { from { top: 10%; } to { top: 88%; } }
+  .cam-top { position: absolute; left: 0; right: 0; top: 0; padding: max(18px, env(safe-area-inset-top)) 20px 16px; display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; background: linear-gradient(rgba(12,13,14,0.7), rgba(12,13,14,0)); }
+  .cam-title { font-size: 19px; font-weight: 600; margin-top: 6px; }
+  .cam-bot { position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; padding: 18px 20px max(22px, env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 14px; align-items: center; text-align: center; background: linear-gradient(rgba(12,13,14,0), rgba(12,13,14,0.85) 40%); }
+  .cam-hint { margin: 0; max-width: 420px; font-size: 15px; line-height: 1.45; color: rgba(255,255,255,0.88); text-wrap: pretty; }
+  .cam-row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  .cam .btn { background: #fff; color: #0C0D0E; border-color: #fff; }
+  .cam .btn.ghost { background: transparent; color: #fff; border-color: rgba(255,255,255,0.45); }
+  .shutter { width: 18px; height: 18px; border-radius: 50%; border: 2px solid #0C0D0E; background: #FF5B2E; }
+  .cam-result { position: absolute; inset: 0; z-index: 1; background: #0C0D0E; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 90px 20px 170px; }
+  .cam-result canvas { width: min(78vw, 46vh, 420px); height: auto; border-radius: 50%; }
+  .cam-verdict { display: flex; align-items: center; gap: 10px; font-size: 22px; font-weight: 600; }
+  .cam-verdict i { width: 10px; height: 10px; border-radius: 50%; }
+  .cam-verdict.ok i { background: #3CC57E; } .cam-verdict.bad i { background: #FF5B2E; }
+
+  @media (max-width: 1180px) { #bar button:not(.cur) .nm { display: none; } #bar button { flex: 0 0 auto; } }
+  @media (max-height: 640px) and (min-width: 761px) {
+    #panel { top: 84px; gap: 10px; padding: 16px; }
+    body.wt .foot { display: none; }
+    #panel h2 { font-size: 22px; }
+    #panel p.small { display: none; }
+    .card { padding: 12px; gap: 6px; }
+    .card dl { font-size: 13px; gap: 4px 12px; }
+    #panel .acts { bottom: -16px; margin-bottom: -16px; padding-bottom: 16px; }
+  }
+  @media (max-height: 480px) and (min-width: 761px) { .brand p { display: none; } }
+  @media (max-width: 760px) {
+    .top { left: 18px; right: 18px; top: max(16px, env(safe-area-inset-top)); gap: 12px; }
+    .brand h1 { white-space: nowrap; }
+    .brand p { display: none; }
+    .brand h1 { font-size: 19px; }
+    body.wt three-d-stage { height: 50%; }
+    body.wt .foot { display: none; }
+    .foot { left: 18px; bottom: 56px; }
+    #panel { left: 0; right: 0; top: auto; bottom: 0; width: auto; height: calc(50% + 14px); max-height: none; border-radius: 18px 18px 0 0; padding: 18px 18px max(18px, env(safe-area-inset-bottom)); background: #fff; backdrop-filter: none; }
+    #panel h2 { font-size: 22px; }
+    #panel .acts { bottom: calc(-1 * max(18px, env(safe-area-inset-bottom))); margin-bottom: calc(-1 * max(18px, env(safe-area-inset-bottom))); padding-bottom: max(18px, env(safe-area-inset-bottom)); }
+    #bar { display: none; }
+    .foot { bottom: calc(48px + env(safe-area-inset-bottom)); }
+    /* Phones: numbered markers on the model, names in a legend below it. */
+    .lab .lt { display: none; }
+    .lab em { margin-right: 0; color: #3F3E3B; }
+    body:not(.wt) .legend { display: grid; }
+  }
+</style>
+</head>
+<body class="wt">
+<three-d-stage name="medsafe-peg" background="#EFEEEA"></three-d-stage>
+<div class="ui">
+  <div class="top">
+    <div class="brand">
+      <div class="mono">Concept device</div>
+      <h1>MedSafe PEG</h1>
+      <p>Automated preparation and safety monitoring for medication given through a PEG feeding tube.</p>
+    </div>
+    <div class="ctrl">
+      <div class="seg" role="group" aria-label="Mode">
+        <button data-view="wt" aria-pressed="true">Walkthrough</button>
+        <button data-view="explore" aria-pressed="false">Explore</button>
+      </div>
+      <div class="seg" id="exploreCtl" role="group" aria-label="View">
+        <button data-mode="assembled" aria-pressed="true">Assembled</button>
+        <button data-mode="exploded" aria-pressed="false">Exploded</button>
+      </div>
+    </div>
+  </div>
+  <div class="labels" id="labels"></div>
+  <ol class="legend" id="legend" aria-label="Parts"></ol>
+  <div id="panel" aria-live="polite"></div>
+  <div id="bar"></div>
+  <div class="foot mono">Concept only · not a validated medical device</div>
+</div>
+<script src="three-d-stage.js"></script>
+<script type="module">
+  import { buildMedSafe, drawScreen, makeEnv, DIM } from './medsafe-model.js';
+  import { PATIENT, openCamera, simulatedVerify } from './demo-vision.js';
+
+  const stage = document.querySelector('three-d-stage');
+  const { THREE } = await stage.ready;
+  const r = stage._renderer, scene = stage._scene, cam = stage._camera, ctl = stage._controls;
+  r.toneMapping = THREE.NeutralToneMapping;
+  scene.environment = makeEnv(THREE, r);
+  scene.environmentIntensity = 0.5;
+  scene.traverse((o) => { if (o.isHemisphereLight) o.intensity = 0.55; if (o.isDirectionalLight && o.castShadow) o.intensity = 1.8; });
+
+  const dev = buildMedSafe(THREE, { film: true, state: { tank: 0.82, status: 0.6 } });
+  stage.setObject(dev.group);
+  dev.group.traverse((o) => { if (o.isMesh && o.name.startsWith('fx_')) { o.castShadow = false; o.receiveShadow = false; } });
+  const home = { pos: cam.position.clone(), tgt: ctl.target.clone(), fov: cam.fov };
+  const sr = stage.shadowRoot;
+  // Phone layout for the stage's own orbit hint (it lives in its shadow DOM).
+  const touch = matchMedia('(pointer: coarse)').matches;
+  { const st = document.createElement('style');
+    st.textContent = `@media (max-width: 760px) {
+      .note { left: 18px; right: 18px; max-width: none; bottom: max(16px, env(safe-area-inset-bottom)); }
+    }`;
+    sr.appendChild(st);
+    const nt = sr.querySelector('.note'); if (nt && touch) nt.textContent = 'Drag to orbit · pinch to zoom';
+  }
+
+  // ── Timeline (same choreography as the process film) ──────────────────
+  const Q = { Remind: 0, Verify: 5.5, Load: 14.5, Crush: 20, Water: 25.5, Mix: 31, Fill: 35.5, Residue: 42, Document: 49.5, Close: 56.5 };
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  const r01 = (T, a, b) => clamp((T - a) / (b - a), 0, 1);
+  const eio = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+  const eo = (t) => 1 - Math.pow(1 - t, 3);
+  const mv = (T, a, b) => eio(r01(T, a, b));
+  const win = (T, a, b, fi = 0.7, fo = 0.5) => Math.max(0, Math.min(eo(r01(T, a, a + fi)), 1 - mv(T, b - fo, b)));
+  const lerp = (a, b, p) => a + (b - a) * p;
+
+  function devState(T) {
+    const { FLOOR, RIM, LIQ_MAX } = DIM;
+    const e = (a, b) => mv(T, a, b);
+    const { Verify: V, Load: L, Crush: Cr, Water: Wt, Mix: M, Fill: F, Residue: R, Document: Dc, Close: Cl } = Q;
+    const s = {};
+    s.lid = e(L + 0.3, L + 1.1) - e(L + 3.4, L + 4.2);
+    if (T >= L + 1.0 && T < Cr + 3.4) {
+      s.pill = true;
+      const fall = r01(T, L + 1.3, L + 1.9), g = fall * fall, top = RIM + 0.12, rest = FLOOR + 0.0074, b = r01(T, L + 1.9, L + 2.4);
+      s.pillY = top + (rest - top) * g + 0.003 * Math.sin(Math.PI * b) * (1 - b) - 0.0035 * e(Cr + 0.4, Cr + 3.0);
+      s.pillRx = (1 - g) * 2.4 + 0.25 * g; s.pillX = 0.003 * (1 - g);
+      s.pillScale = 1 - e(Cr + 0.5, Cr + 3.0);
+    }
+    s.spin = 20 * clamp(T - (Cr + 0.3), 0, 3.2) + 12 * clamp(T - (M + 0.3), 0, 3.8);
+    s.powder = e(Cr + 0.7, Cr + 3.2) * (1 - 0.35 * e(Wt + 1.5, Wt + 4.2)) * (1 - e(M + 0.4, M + 3.0));
+    const wp = e(Wt + 1.0, Wt + 4.0);
+    s.tank = 0.82 - 0.3 * wp;
+    s.inB = e(Wt + 0.4, Wt + 1.2); s.inA = e(Wt + 3.9, Wt + 4.6);
+    s.stream = T > Wt + 1.1 && T < Wt + 4.2 ? 1 : 0;
+    const fp = e(F + 0.9, F + 4.9);
+    s.liquid = LIQ_MAX * e(Wt + 1.2, Wt + 4.3) * (1 - 0.94 * fp);
+    s.mix = e(M + 0.3, M + 3.6);
+    s.particles = win(T, M + 0.2, F + 1.6, 0.6, 1.0);
+    s.swirl = 9 * clamp(T - (M + 0.3), 0, 5.5);
+    s.outB = e(F + 0.3, F + 1.0); s.outA = e(F + 4.8, F + 5.5);
+    s.syr = fp;
+    s.lift = 0.36 * e(Dc + 0.5, Dc + 2.0);
+    const loadScan = win(T, L + 2.4, L + 3.3, 0.2, 0.4);
+    const resScan = win(T, R + 0.4, R + 5.8, 0.4, 0.6);
+    s.led = Math.max(loadScan, resScan);
+    s.cone = Math.max(loadScan * 0.8, win(T, R + 0.8, R + 3.9, 0.4, 0.4));
+    s.scanRing = T > R + 1.0 && T < R + 3.6 ? ((T - (R + 1.0)) / 1.3) % 1 : -1;
+    s.status = 0.6;
+    const sc = win(T, V + 5.1, V + 5.8, 0.15, 0.2);
+    s.scanLed = sc; s.beam = sc;
+    return s;
+  }
+
+  const CX = -0.065, CZ = -0.022;
+  const VIEWS = {
+    heroB: { t: [0, 0.15, 0], az: 24, el: 21, r: 0.96 },
+    verA: { t: [0.04, 0.115, 0.075], az: 24, el: 25, r: 0.7 }, verB: { t: [0.04, 0.115, 0.075], az: 14, el: 23, r: 0.66 },
+    loadA: { t: [CX, 0.235, CZ], az: 14, el: 30, r: 0.55 }, loadB: { t: [CX, 0.225, CZ], az: 26, el: 27, r: 0.5 },
+    crA: { t: [CX, 0.18, CZ], az: -8, el: 30, r: 0.32 }, crB: { t: [CX, 0.178, CZ], az: -22, el: 34, r: 0.28 },
+    watA: { t: [-0.015, 0.2, -0.035], az: -52, el: 26, r: 0.66 }, watB: { t: [-0.015, 0.2, -0.035], az: -40, el: 23, r: 0.6 },
+    mixA: { t: [CX, 0.185, CZ], az: -26, el: 21, r: 0.3 }, mixB: { t: [CX, 0.185, CZ], az: 8, el: 24, r: 0.28 },
+    fillA: { t: [0.03, 0.18, 0.0], az: 18, el: 22, r: 0.66 }, fillB: { t: [0.035, 0.185, 0.0], az: 30, el: 19, r: 0.6 },
+    resA: { t: [CX, 0.185, CZ], az: 12, el: 38, r: 0.46 }, resB: { t: [CX, 0.18, CZ], az: -6, el: 34, r: 0.42 },
+    docA: { t: [0.02, 0.17, 0.03], az: 28, el: 21, r: 0.72 }, docB: { t: [0.0, 0.14, 0.05], az: 14, el: 26, r: 0.56 },
+  };
+
+  const STEPS = [
+    { k: 'intro', title: 'A dose is due', hold: 0.2, view: ['heroB', 'heroB'],
+      body: 'MedSafe PEG reminds the caregiver when a dose is due, then checks every step of the preparation before anything reaches the feeding tube.' },
+    { k: 'remind', n: '01', name: 'Remind', title: 'Dose reminder', play: [0.2, 2.2], view: ['heroB', 'verA'],
+      body: 'At the scheduled time, the device sounds an alert and shows which medicine is due. The caregiver taps Start preparation on the screen.' },
+    { k: 'verify', n: '02', name: 'Verify', title: 'Verify the pack', hold: Q.Verify + 4.3, play: [Q.Verify + 4.9, Q.Verify + 6.3], view: ['verA', 'verB'], cam: true,
+      body: 'The caregiver scans the medicine pack. MedSafe reads the code and checks it against the prescription and a do-not-crush list before anything is prepared.' },
+    // Loading the tablet is part of step 03 (8-step workflow): the animation runs from lid open to the end of crushing.
+    { k: 'crush', n: '03', name: 'Crush', title: 'Load and crush', play: [Q.Load, Q.Water], view: ['loadA', 'crB'],
+      body: 'The caregiver places one tablet in the cup and closes the lid. With the lid locked, the cone grinder grinds the tablet to a fine powder.' },
+    { k: 'water', n: '04', name: 'Add water', title: 'Add water', play: [Q.Water, Q.Mix], view: ['watA', 'watB'],
+      body: 'The pump draws the water volume set in the dose profile by the pharmacist (20 mL in this demo).' },
+    { k: 'mix', n: '05', name: 'Mix', title: 'Mix', play: [Q.Mix, Q.Fill], view: ['mixA', 'mixB'],
+      body: 'The stirrer mixes the powder and water until the preparation is uniform.' },
+    { k: 'fill', n: '06', name: 'Fill syringe', title: 'Fill the syringe', play: [Q.Fill, Q.Residue], view: ['fillA', 'fillB'],
+      body: 'The preparation is drawn through the outlet into the docked ENFit syringe.' },
+    { k: 'residue', n: '07', name: 'Check residue', title: 'Check for residue', hold: Q.Residue + 0.2, play: [Q.Residue + 0.2, Q.Residue + 3.9], view: ['resA', 'resB'], cam: true,
+      body: 'The lid camera and LED ring inspect the empty cup. Visible residue means part of the dose stayed behind.' },
+    { k: 'document', n: '08', name: 'Document', title: 'Give and document', play: [Q.Document, Q.Close - 0.1], view: ['docA', 'docB'],
+      body: 'The caregiver removes the syringe, gives the dose and confirms it on the screen. The record is saved.' },
+  ];
+
+  const S = { step: 0, T: 0.2, anim: null, phase: 'intro', verify: null, residue: null, flushing: false, mode: 'wt', given: null };
+  const panel = document.getElementById('panel'), bar = document.getElementById('bar');
+  const clockNow = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+
+  function play([a, b], done) { S.T = a; S.anim = { a, b, t0: performance.now(), done }; }
+
+  function goStep(i) {
+    const st = STEPS[i]; S.step = i; S.anim = null; S.flushing = false;
+    if (st.k === 'intro') { S.phase = 'intro'; S.T = st.hold; S.verify = null; S.residue = null; S.given = null; }
+    else if (st.cam) { S.phase = 'choice'; S.T = st.hold; S[st.k] = null; }
+    else { S.phase = 'playing'; play(st.play, () => { S.phase = 'done'; if (st.k === 'document') S.given = clockNow(); render(); }); }
+    render();
+  }
+  function runCheck(kind, result) {
+    S[kind] = result; S.phase = 'playing'; render();
+    play(STEPS[S.step].play, () => { S.phase = 'result'; render(); });
+  }
+  async function liveTest() {
+    const st = STEPS[S.step];
+    const out = await openCamera(st.k);
+    if (!out) return;
+    if (st.k === 'verify') runCheck('verify', out.result);
+    else runCheck('residue', { ok: out.ok, coverage: out.coverage, spots: out.spots, img: out.img, method: 'Live test · photo' });
+  }
+  function simulate() {
+    const st = STEPS[S.step];
+    if (st.k === 'verify') runCheck('verify', simulatedVerify());
+    else runCheck('residue', { ok: true, coverage: 0, spots: 0, method: 'Simulated' });
+  }
+  function flush() {
+    S.residue = null; S.flushing = true; S.phase = 'playing'; render();
+    play(STEPS[S.step].play, () => { S.flushing = false; S.phase = 'choice'; render(); });
+  }
+
+  // ── Panel ──────────────────────────────────────────────────────────────
+  const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const checkRow = (c) => `<li class="${c.ok === true ? 'y' : c.ok === false ? 'n' : 'u'}"><b>${esc(c.label)}</b><span>${esc(c.detail)}</span></li>`;
+  // Match: every check with a tick. Blocked: only the reason(s) it was blocked, then what to do next.
+  const verifyCard = (v) => v.ok ? `<div class="rc ok">
+      <div class="rc-h"><i></i>Match</div>
+      <div class="rc-t">${esc(v.title)}</div><div class="rc-s">${esc(v.sub)}</div>
+      <ul class="checks">${v.checks.map(checkRow).join('')}</ul>
+      <div class="src mono">${esc(v.method)}</div></div>`
+    : `<div class="rc bad">
+      <div class="rc-h"><i></i>Blocked · preparation locked</div>
+      <div class="rc-t">${esc(v.title)}</div>
+      <ul class="checks">${v.checks.filter((c) => c.ok === false).map(checkRow).join('')}</ul>
+      <div class="rc-next">${esc(v.next)}</div></div>`;
+  const residueCard = (x) => `<div class="rc ${x.ok ? 'ok' : 'bad'}">
+      <div class="rc-h"><i></i>${x.ok ? 'Clear' : 'Residue detected'}</div>
+      ${x.img ? `<img src="${x.img}" alt="Analysed cup photo">` : ''}
+      <div class="rc-t">${x.ok ? 'No visible residue' : 'Flush and re-check'}</div>
+      ${x.img ? `<div class="rc-s">${(x.coverage * 100).toFixed(2)}% of cup area · ${x.spots} spot${x.spots === 1 ? '' : 's'}</div>` : ''}
+      <div class="src mono">${esc(x.method)}</div></div>`;
+  const B = (label, act, cls = '') => `<button class="btn ${cls}" data-act="${act}">${label}</button>`;
+
+  function render() {
+    const st = STEPS[S.step], i = S.step;
+    let h = `<div class="ph"><span class="mono">${st.n ? `Step ${st.n} / 08` : 'Demo scenario'}</span>${i ? '<button class="link" data-act="restart">Restart</button>' : ''}</div>`;
+    h += `<h2>${st.title}</h2>`;
+    if (st.k === 'intro') {
+      const L = PATIENT.later, rxRow = (cls, time, when, m) => `<li class="${cls}"><span class="rx-t"><b>${time}</b><em>${when}</em></span><span class="rx-m"><b>${m.drug}</b>${m.generic.toLowerCase()} · ${m.dose}</span></li>`;
+      h += `<div class="card"><div class="mono">Demo patient</div><div class="pname">${PATIENT.name}</div><div class="route">Medicines given through a ${PATIENT.route}</div>
+        <div class="mono">Prescriptions</div>
+        <ul class="rx">${rxRow('now', PATIENT.due, 'Due now', PATIENT)}${rxRow('', L.due, `In ${L.hours} hours`, L)}</ul></div>`;
+      h += `<p>${st.body}</p><p class="small">Two steps can be tested for real with your phone camera: verifying the pack and checking for residue.</p>`;
+      h += `<div class="acts">${B('Start walkthrough →', 'next')}</div>`;
+    } else if (S.phase === 'choice') {
+      h += `<p>${st.body}</p>`;
+      h += st.k === 'verify'
+        ? `<p class="small">Scan the ${PATIENT.drug} pack: it is due now. ${PATIENT.later.drug} is not due until ${PATIENT.later.due}.</p>`
+        : `<p class="small">Place the empty transparent cup on black paper and photograph the bottom from above. Sprinkle a little powder to see it flagged.</p>`;
+      h += `<div class="acts">${B('Test with camera', 'live')}${B('Continue demo', 'sim', 'ghost')}</div>`;
+    } else if (S.phase === 'playing') {
+      h += `<p>${S.flushing ? 'The cup is flushed with water and inspected again.' : st.body}</p>`;
+      if (S.verify && st.k === 'verify') h += `<p class="small">Device scanning…</p>`;
+      if (st.k === 'residue') h += `<p class="small">${S.flushing ? 'Flushing…' : 'Inspecting the cup…'}</p>`;
+      h += `<div class="prog"><i id="pg"></i></div>`;
+    } else if (S.phase === 'result' && st.k === 'verify') {
+      h += verifyCard(S.verify);
+      h += S.verify.ok ? `<div class="acts">${B('Next step →', 'next')}</div>`
+        : `<div class="acts">${B('Scan another pack', 'live')}${B(`Continue with ${PATIENT.drug} (simulated)`, 'sim', 'ghost')}</div>`;
+    } else if (S.phase === 'result' && st.k === 'residue') {
+      h += residueCard(S.residue);
+      h += S.residue.ok ? `<div class="acts">${B('Next step →', 'next')}</div>`
+        : `<div class="acts">${B('Flush and re-check', 'flush')}${B('Continue demo', 'next', 'ghost')}</div>`;
+    } else if (st.k === 'document') {
+      const v = S.verify, x = S.residue;
+      h += `<div class="card sum"><div class="mono">Dose record</div><dl>
+        <dt>Patient</dt><dd>${PATIENT.name}</dd>
+        <dt>Medication</dt><dd>${PATIENT.drug} · 1 tablet via PEG</dd>
+        <dt>Medicine verified</dt><dd>${v ? (v.ok ? 'Yes' : 'No') : '—'}</dd>
+        <dt>Residue check</dt><dd>${x ? (x.ok ? 'None visible' : 'Residue found') : '—'}</dd>
+        <dt>Given</dt><dd>${S.given || clockNow()}</dd></dl></div>`;
+      h += `<div class="acts">${B('Restart walkthrough', 'restart')}${B('Explore the device', 'explore', 'ghost')}</div>`;
+    } else {
+      h += `<p>${st.body}</p><div class="acts">${st.k === 'remind' ? B('Start preparation →', 'next') : B('Next step →', 'next')}</div>`;
+    }
+    panel.innerHTML = h;
+    bar.innerHTML = STEPS.slice(1).map((s, j) => `<button data-i="${j + 1}" class="${j + 1 < i ? 'done' : j + 1 === i ? 'cur' : ''} ${s.cam ? 'camstep' : ''}"><span class="mono">${s.n}</span><span class="nm">${s.name}</span></button>`).join('');
+  }
+  panel.addEventListener('click', (e) => {
+    const a = e.target.closest('[data-act]')?.dataset.act; if (!a) return;
+    if (a === 'next') goStep(Math.min(STEPS.length - 1, S.step + 1));
+    else if (a === 'restart') goStep(0);
+    else if (a === 'live') liveTest();
+    else if (a === 'sim') simulate();
+    else if (a === 'flush') flush();
+    else if (a === 'explore') setView('explore');
+  });
+  bar.addEventListener('click', (e) => { const b = e.target.closest('[data-i]'); if (b) goStep(+b.dataset.i); });
+
+  // ── Device screen ──────────────────────────────────────────────────────
+  function screen() {
+    const st = STEPS[S.step], clock = clockNow();
+    // Hold the last frame of the step on screen instead of flipping to the next step's state.
+    const T = st.play && !st.cam ? Math.min(S.T, st.play[1] - 0.01) : S.T;
+    const { Load: L, Crush: Cr, Water: Wt, Mix: M, Fill: F, Residue: R, Document: Dc } = Q;
+    const pr = (a, b) => Math.round(r01(T, a, b) * 100) / 100;
+    if (st.k === 'intro') return { mode: 'idle', alert: false, clock, lines: ['NEXT DOSE', PATIENT.drug, '1 tablet · via PEG tube'] };
+    if (st.k === 'remind') return { mode: 'remind', clock, lines: ['DOSE DUE · NOW', PATIENT.drug, '1 tablet · via PEG tube'] };
+    if (st.k === 'verify') {
+      const v = S.verify;
+      if (!v) return { mode: 'scan', clock, lines: ['02 VERIFY', 'Scan the package', 'Hold the code to the scanner'] };
+      if (S.phase === 'playing') return { mode: 'scan', clock, p: pr(Q.Verify + 5.1, Q.Verify + 5.8), lines: ['02 VERIFY', 'Reading code', 'Checking prescription'] };
+      return v.ok ? { mode: 'verified', clock, lines: v.screen } : { mode: 'blocked', clock, lines: v.screen };
+    }
+    if (st.k === 'residue') {
+      const x = S.residue;
+      if (S.flushing) return { mode: 'residue', clock, p: pr(R + 0.8, R + 3.7), lines: ['07 CHECK RESIDUE', 'Flushing', 'Rinse and re-inspect'] };
+      if (!x) return { mode: 'residue', clock, lines: ['07 CHECK RESIDUE', 'Ready to inspect', 'Camera and LED ring'] };
+      if (S.phase === 'playing') return { mode: 'residue', clock, p: pr(R + 0.8, R + 3.7) };
+      return x.ok ? { mode: 'residue_ok', clock } : { mode: 'residue_bad', alert: true, clock, lines: ['07 CHECK RESIDUE', 'Residue detected', 'Flush and re-check'] };
+    }
+    if (T < L + 2.9) return { mode: 'load', clock, lines: ['03 LOAD', 'Place 1 tablet', 'Open lid · drop tablet into the cup'] };
+    if (T < Cr) return { mode: 'loaded', clock, lines: ['03 LOAD', 'Lid closed', 'Ready to crush'] };
+    if (T < Wt) return { mode: 'crush', p: pr(Cr + 0.4, Cr + 4.3), clock };
+    if (T < M) { const p = mv(T, Wt + 1.0, Wt + 4.0); return { mode: 'water', v: Math.round(p * 200) / 10, p: Math.round(p * 100) / 100, clock }; }
+    if (T < F) return { mode: 'mix', p: pr(M + 0.3, M + 4.0), clock };
+    if (T < R) { const p = mv(T, F + 0.9, F + 4.9); return { mode: 'fill', p: Math.round(p * 100) / 100, clock, lines: ['06 FILL SYRINGE', 'Filling syringe', 'ENFit syringe · docked'] }; }
+    if (T < Dc + 2.4) return { mode: 'remove', clock };
+    if (T < Dc + 3.8) return { mode: 'confirm', press: T > Dc + 3.25 ? 1 : 0, clock };
+    return { mode: 'logged', clock, lines: ['LOGGED', (S.given || clock) + ' · Given', 'Confirmed by caregiver'] };
+  }
+  let screenKey = '';
+  document.fonts.ready.then(() => { screenKey = ''; });
+
+  // ── Explore mode (original viewer) ─────────────────────────────────────
+  const P = dev.parts;
+  const LABELS = [
+    ['01', 'Lid · camera + LED ring', () => P.lid_shell], ['02', 'Replaceable preparation cartridge', () => P.cartridge_wall],
+    ['03', 'Grinding pocket · cone grinder + stirrer', () => P.cone_burr], ['04', 'Drive base · motor', () => P.drive_base_platform],
+    ['05', 'Water reservoir', () => P.reservoir_shell], ['06', 'ENFit syringe', () => P.barrel],
+    ['07', 'Touch display', () => P.display], ['08', 'Barcode scanner', () => P.scanner_window],
+  ];
+  const host = document.getElementById('labels'), LEFT = [0, 1, 2, 3, 6];
+  const els = LABELS.map(([n, t], i) => { const d = document.createElement('div'); d.className = LEFT.includes(i) ? 'lab l' : 'lab'; d.style.opacity = 0; d.innerHTML = `<i></i><b></b><span><em>${n}</em><span class="lt">${t}</span></span>`; host.appendChild(d); return d; });
+  const legend = document.getElementById('legend');
+  legend.innerHTML = LABELS.map(([n, t]) => `<li><em>${n}</em>${t}</li>`).join(''); legend.style.opacity = 0;
+  let exMode = 'assembled', ex = 0;
+  document.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', () => {
+    exMode = b.dataset.mode; document.querySelectorAll('[data-mode]').forEach((x) => x.setAttribute('aria-pressed', x === b));
+  }));
+  function setView(v) {
+    S.mode = v; document.body.classList.toggle('wt', v === 'wt');
+    document.querySelectorAll('[data-view]').forEach((x) => x.setAttribute('aria-pressed', x.dataset.view === v));
+    const nt = sr.querySelector('.note'); if (nt) nt.style.display = v === 'wt' ? 'none' : '';
+    if (v === 'explore') {
+      cam.clearViewOffset(); cam.fov = home.fov;
+      ctl.target.copy(home.tgt); fitExplore(home.pos); ctl.enabled = true; ctl.autoRotate = true;
+    } else { ctl.enabled = false; ctl.autoRotate = false; curV = null; }
+  }
+  // The stage frames the model by height only; on tall, narrow screens move the
+  // camera back so the model (and its exploded labels) fit the width too.
+  const homeDist = home.pos.distanceTo(home.tgt);
+  function fitExplore(from = cam.position) {
+    const aspect = (stage.clientWidth || innerWidth) / (stage.clientHeight || innerHeight);
+    const k = Math.max(1, 0.85 / aspect);
+    const dir = from.clone().sub(ctl.target).normalize();
+    cam.position.copy(ctl.target).add(dir.multiplyScalar(homeDist * k));
+    cam.near = homeDist * k / 100;
+    // Phones: centre the model in the space between the top controls and the parts legend.
+    if (innerWidth <= 760) {
+      const w = stage.clientWidth, h = stage.clientHeight;
+      const top = document.querySelector('.ctrl').getBoundingClientRect().bottom, bottom = legend.getBoundingClientRect().top;
+      cam.setViewOffset(w, h, 0, Math.max(0, h / 2 - (top + bottom) / 2), w, h);
+    } else cam.clearViewOffset();
+    cam.updateProjectionMatrix();
+  }
+  addEventListener('resize', () => { if (S.mode === 'explore') requestAnimationFrame(() => fitExplore()); });
+  document.querySelectorAll('[data-view]').forEach((b) => b.addEventListener('click', () => setView(b.dataset.view)));
+
+  // ── Loop ───────────────────────────────────────────────────────────────
+  let curV = null;
+  const brandP = document.querySelector('.brand p');
+  const box = new THREE.Box3(), v3 = new THREE.Vector3();
+  function tick() {
+    const now = performance.now();
+    if (S.anim) {
+      const { a, b, t0, done } = S.anim;
+      S.T = Math.min(b, a + (now - t0) / 1000);
+      const pg = document.getElementById('pg'); if (pg) pg.style.width = (r01(S.T, a, b) * 100).toFixed(1) + '%';
+      if (S.T >= b) { S.anim = null; done && done(); }
+    }
+    const w = stage.clientWidth || innerWidth, h = stage.clientHeight || innerHeight, mobile = innerWidth <= 760;
+    if (S.mode === 'wt') {
+      ex += (0 - ex) * 0.1; dev.setExplode(ex);
+      const s = devState(S.T), st = STEPS[S.step];
+      if (st.k === 'verify' && S.phase === 'result' && S.verify && !S.verify.ok) s.status = 0.7 + 2.2 * (0.5 + 0.5 * Math.sin(now / 1000 * 12));
+      if (st.k === 'intro') s.status = 0.7 + 1.8 * (0.5 + 0.5 * Math.sin(now / 1000 * 7));
+      dev.setState(s);
+      const ss = screen(), sk = JSON.stringify(ss);
+      if (sk !== screenKey) { drawScreen(dev.screenCanvas, ss); dev.screenTex.needsUpdate = true; screenKey = sk; }
+      const p = st.play && !st.cam ? mv(S.T, st.play[0], st.play[1]) : (st.cam && S.phase !== 'choice' ? 1 : 0);
+      const A = VIEWS[st.view[0]], Bv = VIEWS[st.view[1]];
+      const tv = { t: [0, 1, 2].map((k) => lerp(lerp(A.t[k], Bv.t[k], p), [-0.01, 0.15, 0.02][k], 0.45)), az: lerp(A.az, Bv.az, p), el: lerp(A.el, Bv.el, p), r: Math.max(0.62, lerp(A.r, Bv.r, p)) };
+      if (!curV) curV = JSON.parse(JSON.stringify(tv));
+      const k = 0.06;
+      curV.t = curV.t.map((x, j) => x + (tv.t[j] - x) * k); curV.az += (tv.az - curV.az) * k; curV.el += (tv.el - curV.el) * k; curV.r += (tv.r - curV.r) * k;
+      const uw = mobile ? w : w - 400, uh = mobile ? h - 64 : h - 190;
+      const rk = 1.15 * (h / Math.max(160, uh)) * Math.max(1, 1.6 / (uw / Math.max(160, uh)));
+      const az = curV.az * Math.PI / 180, el = curV.el * Math.PI / 180, R = curV.r * rk;
+      ctl.target.set(...curV.t);
+      cam.position.set(curV.t[0] + R * Math.sin(az) * Math.cos(el), curV.t[1] + R * Math.sin(el), curV.t[2] + R * Math.cos(az) * Math.cos(el));
+      cam.fov = 28; cam.near = Math.max(0.01, R / 40);
+      if (mobile) cam.setViewOffset(w, h, 0, -32, w, h); else cam.setViewOffset(w, h, 200, -22, w, h);
+      cam.updateProjectionMatrix();
+      els.forEach((e) => (e.style.opacity = 0));
+      brandP.style.opacity = ''; legend.style.opacity = 0;
+    } else {
+      const tEx = exMode === 'exploded' ? 1 : 0; ex += (tEx - ex) * 0.08;
+      dev.setExplode(ex); dev.setState({ tank: 0.72, status: 0.7 });
+      if (screenKey !== 'idle') { drawScreen(dev.screenCanvas, { mode: 'idle', clock: clockNow(), lines: ['NEXT DOSE', 'Now', PATIENT.drug + ' · 1 tablet'] }); dev.screenTex.needsUpdate = true; screenKey = 'idle'; }
+      brandP.style.opacity = 1 - ex;
+      LABELS.forEach(([, , get], i) => {
+        box.setFromObject(get()); box.getCenter(v3); v3.project(cam);
+        const x = (v3.x + 1) / 2 * w, y = (1 - v3.y) / 2 * h;
+        els[i].style.transform = LEFT.includes(i) ? `translate(${x + 3}px, ${y - 10}px) translateX(-100%)` : `translate(${x - 3}px, ${y - 10}px)`;
+        els[i].style.opacity = ex > 0.6 ? 1 : 0;
+      });
+      legend.style.opacity = ex > 0.6 ? 1 : 0;
+    }
+    requestAnimationFrame(tick);
+  }
+  setView('wt'); goStep(0); tick();
+</script>
+</body>
+</html>
